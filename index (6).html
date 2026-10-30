@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Termo Acelera</title>
+<link rel="icon" href="favicon.ico">
+<style>
+  :root{
+    --navy:#1E3A5F; --navy-dark:#142A45; --bg:#EEF1F5; --ink:#23303F; --muted:#64748B;
+    --paper:#fff; --paper-edge:#D7DEE6; --line:#CBD5E1; --green:#1E7A4C; --warn:#B45309;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+
+  header.top{ background:#fff; border-bottom:1px solid #E4E8EE; padding:18px 24px; }
+  header.top .wrap{ max-width:1280px; margin:0 auto; display:flex; align-items:center; gap:16px; }
+  header.top img{ height:56px; width:auto; }
+  header.top h1{ margin:0; font-size:26px; color:var(--navy-dark); }
+
+  main{ max-width:1280px; margin:24px auto; padding:0 24px; display:grid;
+    grid-template-columns:380px 1fr; gap:24px; align-items:start; }
+  @media (max-width:980px){ main{ grid-template-columns:1fr; } }
+
+  .panel{ background:#fff; border:1px solid var(--paper-edge); border-radius:12px; padding:20px; }
+  .panel h2{ margin:0 0 4px; font-size:16px; color:var(--navy-dark); }
+  .panel .sub{ margin:0 0 16px; font-size:12.5px; color:var(--muted); }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  .field input{ width:100%; padding:9px 10px; font-size:14px; border:1px solid var(--line);
+    border-radius:8px; background:#fff; color:var(--ink); }
+  .field input:focus{ outline:2px solid #93B4DA; border-color:#93B4DA; }
+  .field input.filled{ border-color:#34B97A; background:#F3FBF7; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .progress{ height:8px; background:#E2E8F0; border-radius:99px; overflow:hidden; margin:4px 0 6px; }
+  .progress > div{ height:100%; width:0; background:#2DBE74; transition:width .25s; }
+  .progress-txt{ font-size:12px; color:var(--muted); margin-bottom:16px; font-weight:600; }
+
+  .actions{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  button{ font:inherit; cursor:pointer; border-radius:8px; padding:10px 18px; font-weight:700; font-size:14px; }
+  .btn-pdf{ background:var(--green); color:#fff; border:none; flex:1; }
+  .btn-pdf:hover{ background:#176540; }
+  .btn-clear{ background:#fff; color:var(--navy); border:1px solid var(--line); }
+  .btn-clear:hover{ background:#F1F5F9; }
+
+  .sheet-wrap{ overflow:auto; padding-bottom:12px; }
+
+  /* ---------- Folha: Termo Acelera ---------- */
+  .sheet{
+    background:var(--paper); width:8.5in; min-height:11in; margin:0 auto;
+    box-shadow:0 2px 6px rgba(20,30,50,.08), 0 12px 30px rgba(20,30,50,.10);
+    border:1px solid var(--paper-edge); padding:0.7in 0.85in 0.5in;
+    font-family:Arial,Helvetica,sans-serif; font-size:10.2pt; line-height:1.35; color:#111;
+    display:flex; flex-direction:column;
+  }
+  .acelera-title{ text-align:center; font-weight:bold; font-size:15px; margin-top:12pt; margin-bottom:14pt; }
+  .acelera-subtitle{ text-align:center; font-weight:bold; font-size:15px; margin-bottom:14pt; }
+  .acelera-section-hdr{ font-weight:bold; font-size:12px; margin-bottom:10pt; }
+  .acelera-doc-table{ border:1.1px solid #000; width:100%; }
+  .acelera-doc-table .frow{ display:flex; border-bottom:1px solid #000; }
+  .acelera-doc-table .frow:last-child{ border-bottom:none; }
+  .acelera-doc-table .fcell{ border-right:1px solid #000; padding:4px 6px; min-width:0;
+    overflow-wrap:break-word; word-break:break-word; }
+  .acelera-doc-table .fcell:last-child{ border-right:none; }
+  .acelera-doc-table .lbl{ display:block; font-size:8.5px; font-weight:normal; margin-bottom:6pt; }
+  .acelera-doc-table .val{ font-size:9px; }
+  .acelera-para-block{ margin-top:20pt; font-size:10px; line-height:1.45; text-align:justify; }
+  .acelera-para-block p{ margin:0 0 8pt; }
+  .acelera-para-block p:last-child{ margin-bottom:0; }
+  .acelera-sig-section{ margin-top:12pt; font-size:9.5px; }
+  .acelera-sig-caption{ font-size:9px; border-top:1px solid #000; padding-top:2pt;
+    display:inline-block; min-width:220px; }
+  .acelera-sig-gap-1{ height:10mm; }
+  .acelera-sig-gap-2{ height:16mm; }
+  .ph{ color:var(--warn); font-style:italic; }
+
+  /* Aviso antes de salvar */
+  .modal{ position:fixed; inset:0; background:rgba(15,23,42,.55); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal.show{ display:flex; }
+  .modal .box{ background:#fff; border-radius:14px; padding:24px; max-width:420px; width:100%; }
+  .modal h3{ margin:0 0 8px; color:var(--navy-dark); }
+  .modal p{ margin:0 0 18px; font-size:14px; color:var(--ink); line-height:1.5; }
+  .modal .btns{ display:flex; gap:10px; justify-content:flex-end; }
+  .modal .ok{ background:var(--green); color:#fff; border:none; }
+
+  @media print{
+    body{ margin:0; background:#fff; }
+    header.top, .panel, .modal{ display:none !important; }
+    main{ display:block; padding:0; margin:0; max-width:none; }
+    .sheet-wrap{ overflow:visible; padding:0; }
+    .sheet{ margin:0; box-shadow:none; border:none; min-height:0; }
+    .ph{ color:inherit; font-style:normal; }
+    @page{ size:letter; margin:0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <img src="logo.png" alt="Car Bank" onerror="this.style.display='none'">
+    <h1>Termo Acelera</h1>
+  </div>
+</header>
+
+<main>
+  <!-- ===== Formulário ===== -->
+  <section class="panel">
+    <h2>Dados da loja</h2>
+    <p class="sub">Preencha os campos — o Termo de Anuência ao lado é atualizado na hora.</p>
+
+    <div class="progress"><div id="bar"></div></div>
+    <div class="progress-txt" id="bar-txt">0% dos campos preenchidos</div>
+
+    <div class="field">
+      <label for="razao_social">Razão social</label>
+      <input type="text" id="razao_social" autocomplete="off">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="cnpj">CNPJ</label>
+        <input type="text" id="cnpj" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="numero_dn">Número DN</label>
+        <input type="text" id="numero_dn" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <label for="endereco_sede">Endereço (rua/av.)</label>
+      <input type="text" id="endereco_sede" autocomplete="off">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="numero_sede">Nº</label>
+        <input type="text" id="numero_sede" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="complemento_sede">Complemento</label>
+        <input type="text" id="complemento_sede" maxlength="7" autocomplete="off">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="bairro_sede">Bairro</label>
+        <input type="text" id="bairro_sede" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="cidade_sede">Cidade</label>
+        <input type="text" id="cidade_sede" autocomplete="off">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="estado_sede">UF</label>
+        <input type="text" id="estado_sede" maxlength="2" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="telefone">Telefone (DDD + nº)</label>
+        <input type="text" id="telefone" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-clear" id="btn-limpar">Limpar campos</button>
+      <button type="button" class="btn-pdf" id="btn-pdf">🖨️ Salvar PDF</button>
+    </div>
+  </section>
+
+  <!-- ===== Pré-visualização ===== -->
+  <div class="sheet-wrap">
+    <div class="sheet" id="sheet-acelera">
+
+      <div class="acelera-title">TERMO DE ANUÊNCIA - CONCESSIONÁRIA/LOJISTA</div>
+      <div class="acelera-subtitle">PROGRAMA ACELERA</div>
+
+      <div class="acelera-section-hdr">CONCESSIONÁRIA/LOJISTA</div>
+
+      <div class="acelera-doc-table">
+        <div class="frow">
+          <div class="fcell" style="width:74.5%;">
+            <span class="lbl">Razão Social:</span>
+            <span class="val out" data-field="razao_social" data-ph="[Razão Social]">[Razão Social]</span>
+          </div>
+          <div class="fcell" style="width:25.5%;">
+            <span class="lbl">Número DN:</span>
+            <span class="val out" data-field="numero_dn" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fcell" style="width:100%;">
+            <span class="lbl">Endereço (Rua/Avenida, nº, compl.):</span>
+            <span class="val out" data-field="endereco_sede" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fcell" style="width:49.6%;">
+            <span class="lbl">Número e complemento</span>
+            <span class="val">Nº <span class="out" data-field="numero_sede" data-ph="&nbsp;">&nbsp;</span><span class="out" data-field="complemento_sede" data-ph="">&nbsp;</span></span>
+          </div>
+          <div class="fcell" style="width:50.4%;">
+            <span class="lbl">Bairro :</span>
+            <span class="val out" data-field="bairro_sede" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fcell" style="width:24.8%;">
+            <span class="lbl">Cidade :</span>
+            <span class="val out" data-field="cidade_sede" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+          <div class="fcell" style="width:24.8%;">
+            <span class="lbl">UF :</span>
+            <span class="val out" data-field="estado_sede" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+          <div class="fcell" style="width:24.8%;">
+            <span class="lbl">Tel. (DDD Nº) :</span>
+            <span class="val out" data-field="telefone" data-ph="&nbsp;">&nbsp;</span>
+          </div>
+          <div class="fcell" style="width:25.6%;">
+            <span class="lbl">CNPJ Principal</span>
+            <span class="val out" data-field="cnpj" data-ph="[CNPJ]">[CNPJ]</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="acelera-para-block">
+        <p><b>CONCESSIONÁRIA/LOJISTA</b> acima identificado, declara estar de acordo com a participação de todos os integrantes de sua equipe de Vendas no Programa Acelera (&ldquo;Programa&rdquo;), do Banco Volkswagen S.A., cujas regras gerais de participação no Programa estão disponíveis no link <span style="color:#0563C1; text-decoration:underline;">Regulamento_Equipes de Vendas.docx</span>, incluindo as regras de elegibilidade, pontuação, premiação, resgate de pontos e entrega da premiação.</p>
+        <p>A adesão dos participantes ao Programa é gratuita e será realizada através de cadastro no portal de relacionamento do Programa (www.programaacelera.com.br).</p>
+        <p>E assim, por estar de acordo com os termos deste instrumento, <b>CONCESSIONÁRIA/LOJISTA</b> adere ao presente Termo de Anuência.</p>
+      </div>
+
+      <div class="acelera-sig-section">
+        <div style="font-weight:bold;">CONCESSIONÁRIA/LOJISTA:</div>
+
+        <div class="acelera-sig-gap-1"></div>
+        <div class="acelera-sig-caption">Assinatura do Representante Legal 1 (Assinatura eletrônica)</div>
+        <div style="margin-top:6px;">CNPJ : <span class="out" data-field="cnpj" data-ph="[CNPJ]">[CNPJ]</span></div>
+
+        <div class="acelera-sig-gap-2"></div>
+        <div class="acelera-sig-caption">Assinatura do Representante Legal 2 (Assinatura eletrônica)</div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- Aviso antes de salvar o PDF -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Salvar como PDF</h3>
+    <p>Na janela de impressão que vai abrir, escolha <b>"Salvar como PDF"</b> (ou <b>"Save as PDF"</b>) em Destino/Impressora.</p>
+    <div class="btns">
+      <button type="button" class="btn-clear" id="modal-cancel">Cancelar</button>
+      <button type="button" class="ok" id="modal-ok">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var FIELDS = ["razao_social","cnpj","numero_dn","endereco_sede","numero_sede",
+                "complemento_sede","bairro_sede","cidade_sede","estado_sede","telefone"];
+  var OBRIGATORIOS = ["razao_social","cnpj","endereco_sede","numero_sede",
+                      "bairro_sede","cidade_sede","estado_sede","telefone"]; // Nº DN e complemento são opcionais
+  var TITULO_PADRAO = document.title;
+
+  function el(id){ return document.getElementById(id); }
+
+  function formatarCnpj(v){
+    var d = v.replace(/\D/g,"").slice(0,14);
+    if(d.length <= 11){
+      if(d.length > 9) return d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9);
+      if(d.length > 6) return d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6);
+      if(d.length > 3) return d.slice(0,3)+"."+d.slice(3);
+      return d;
+    }
+    var r = d.slice(0,2)+"."+d.slice(2,5)+"."+d.slice(5,8)+"/"+d.slice(8,12);
+    if(d.length > 12) r += "-"+d.slice(12);
+    return r;
+  }
+
+  // (011) 99399-3171
+  function formatarTelefone(v){
+    var d = v.replace(/\D/g,"").slice(0,12);
+    if(!d) return "";
+    var f = "(" + d.slice(0,3);
+    if(d.length >= 3) f += ") ";
+    f += d.slice(3,8);
+    if(d.length > 8) f += "-" + d.slice(8,12);
+    return f;
+  }
+
+  function render(){
+    var preenchidos = 0;
+    FIELDS.forEach(function(f){
+      var input = el(f);
+      var val = (input.value || "").trim();
+      document.querySelectorAll('.out[data-field="'+f+'"]').forEach(function(out){
+        if(val){ out.textContent = val; out.classList.remove("ph"); }
+        else   { out.innerHTML = out.getAttribute("data-ph"); out.classList.add("ph"); }
+      });
+      input.classList.toggle("filled", !!val);
+      if(val && OBRIGATORIOS.indexOf(f) !== -1) preenchidos++;
+    });
+    var pct = Math.round(preenchidos / OBRIGATORIOS.length * 100);
+    el("bar").style.width = pct + "%";
+    el("bar-txt").textContent = pct + "% dos campos obrigatórios preenchidos";
+  }
+
+  // Nome do arquivo: "3 Acelera_PRIMEIRONOME - CNPJ"
+  function nomeArquivo(){
+    var raz = (el("razao_social").value || "").trim();
+    var primeira = (raz.split(/\s+/)[0] || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .toUpperCase().replace(/[^A-Z0-9]/g,"");
+    var cnpj = (el("cnpj").value || "").replace(/\D/g,"");
+    var nome = "3 Acelera";
+    if(primeira) nome += "_" + primeira;
+    if(cnpj) nome += " - " + cnpj;
+    return nome;
+  }
+
+  function imprimir(){
+    document.title = nomeArquivo();
+    window.print();
+  }
+  window.addEventListener("afterprint", function(){ document.title = TITULO_PADRAO; });
+
+  FIELDS.forEach(function(f){
+    var input = el(f);
+    input.addEventListener("input", function(){
+      if(f === "cnpj") input.value = formatarCnpj(input.value);
+      if(f === "telefone") input.value = formatarTelefone(input.value);
+      if(f === "estado_sede") input.value = input.value.toUpperCase();
+      render();
+    });
+  });
+
+  el("btn-limpar").addEventListener("click", function(){
+    if(!confirm("Limpar todos os campos?")) return;
+    FIELDS.forEach(function(f){ el(f).value = ""; });
+    render();
+  });
+
+  var modal = el("modal");
+  el("btn-pdf").addEventListener("click", function(){ modal.classList.add("show"); });
+  el("modal-cancel").addEventListener("click", function(){ modal.classList.remove("show"); });
+  el("modal-ok").addEventListener("click", function(){ modal.classList.remove("show"); imprimir(); });
+  modal.addEventListener("click", function(e){ if(e.target === modal) modal.classList.remove("show"); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") modal.classList.remove("show"); });
+
+  render();
+})();
+</script>
+</body>
+</html>
