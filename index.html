@@ -32,6 +32,20 @@
     border-radius:8px; background:#fff; color:var(--ink); }
   .field input:focus{ outline:2px solid #93B4DA; border-color:#93B4DA; }
   .field input.filled{ border-color:#34B97A; background:#F3FBF7; }
+  .field input.missing{ border-color:#F6B46B; background:#FFF1E0; }
+  .cnpj-box{ background:#F8FAFC; border:1px dashed var(--line); border-radius:10px; padding:12px; margin-bottom:16px; }
+  .cnpj-box label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  .cnpj-box textarea{ width:100%; min-height:90px; padding:8px 10px; font:inherit; font-size:12.5px;
+    border:1px solid var(--line); border-radius:8px; resize:vertical; color:var(--ink); background:#fff; }
+  .cnpj-box textarea:focus{ outline:2px solid #93B4DA; border-color:#93B4DA; }
+  .cnpj-box .btn-row{ display:flex; gap:8px; margin-top:8px; }
+  .btn-colar{ background:var(--navy); color:#fff; border:none; flex:1; padding:9px 14px; }
+  .btn-colar:hover{ background:var(--navy-dark); }
+  .btn-preencher{ background:#fff; color:var(--navy); border:1px solid var(--line); padding:9px 14px; }
+  .btn-preencher:hover{ background:#F1F5F9; }
+  .cnpj-msg{ font-size:12px; font-weight:600; margin-top:8px; min-height:16px; }
+  .cnpj-msg.ok{ color:var(--green); }
+  .cnpj-msg.warn{ color:var(--warn); }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
   .progress{ height:8px; background:#E2E8F0; border-radius:99px; overflow:hidden; margin:4px 0 6px; }
@@ -114,6 +128,16 @@
 
     <div class="progress"><div id="bar"></div></div>
     <div class="progress-txt" id="bar-txt">0% dos campos preenchidos</div>
+
+    <div class="cnpj-box">
+      <label for="cnpj_dados">Dados do cartão CNPJ</label>
+      <textarea id="cnpj_dados" placeholder="Copie o comprovante de inscrição do CNPJ e clique em &quot;Colar dados&quot; (ou cole aqui com Ctrl+V)"></textarea>
+      <div class="btn-row">
+        <button type="button" class="btn-colar" id="btn-colar">📋 Colar dados</button>
+        <button type="button" class="btn-preencher" id="btn-preencher">Preencher</button>
+      </div>
+      <div class="cnpj-msg" id="cnpj-msg"></div>
+    </div>
 
     <div class="field">
       <label for="razao_social">Razão social</label>
@@ -266,8 +290,8 @@
 (function(){
   var FIELDS = ["razao_social","cnpj","numero_dn","endereco_sede","numero_sede",
                 "complemento_sede","bairro_sede","cidade_sede","estado_sede","telefone"];
-  var OBRIGATORIOS = ["razao_social","cnpj","endereco_sede","numero_sede",
-                      "bairro_sede","cidade_sede","estado_sede","telefone"]; // Nº DN e complemento são opcionais
+  var OBRIGATORIOS = ["razao_social","cnpj","numero_dn","endereco_sede","numero_sede",
+                      "bairro_sede","cidade_sede","estado_sede","telefone"]; // só o complemento é opcional
   var TITULO_PADRAO = document.title;
 
   function el(id){ return document.getElementById(id); }
@@ -306,6 +330,7 @@
         else   { out.innerHTML = out.getAttribute("data-ph"); out.classList.add("ph"); }
       });
       input.classList.toggle("filled", !!val);
+      input.classList.toggle("missing", !val && OBRIGATORIOS.indexOf(f) !== -1);
       if(val && OBRIGATORIOS.indexOf(f) !== -1) preenchidos++;
     });
     var pct = Math.round(preenchidos / OBRIGATORIOS.length * 100);
@@ -332,6 +357,95 @@
   }
   window.addEventListener("afterprint", function(){ document.title = TITULO_PADRAO; });
 
+  // ---------- Leitura do cartão CNPJ ----------
+  function normalizar(s){
+    return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+  }
+
+  function extrairCampo(texto, rotulos){
+    var linhas = texto.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 0; });
+    var norm = linhas.map(normalizar);
+    var rots = rotulos.map(normalizar);
+    function valorApos(idx){
+      if(idx === -1 || idx + 1 >= linhas.length) return "";
+      var v = linhas[idx + 1];
+      if(/^\*+$/.test(v)) return ""; // campo vazio no cartão (********)
+      return v;
+    }
+    // 1º correspondência exata (evita que "NÚMERO" pegue "NÚMERO DE INSCRIÇÃO")
+    for(var i = 0; i < rots.length; i++){
+      var v = valorApos(norm.indexOf(rots[i]));
+      if(v) return v;
+    }
+    // 2º linha que começa com o rótulo
+    for(var j = 0; j < rots.length; j++){
+      var r = rots[j], idx = -1;
+      for(var k = 0; k < norm.length; k++){ if(norm[k].indexOf(r) === 0){ idx = k; break; } }
+      var v2 = valorApos(idx);
+      if(v2) return v2;
+    }
+    return "";
+  }
+
+  function preencherDoCnpj(){
+    var msg = el("cnpj-msg");
+    var bruto = el("cnpj_dados").value;
+    if(!bruto.trim()){
+      msg.textContent = "Cole os dados do cartão CNPJ primeiro.";
+      msg.className = "cnpj-msg warn";
+      return;
+    }
+    var dados = {
+      razao_social:  extrairCampo(bruto, ["NOME EMPRESARIAL"]),
+      cnpj:          extrairCampo(bruto, ["NÚMERO DE INSCRIÇÃO", "CNPJ"]),
+      endereco_sede: extrairCampo(bruto, ["LOGRADOURO"]),
+      numero_sede:   extrairCampo(bruto, ["NÚMERO"]),
+      bairro_sede:   extrairCampo(bruto, ["BAIRRO/DISTRITO", "BAIRRO"]),
+      cidade_sede:   extrairCampo(bruto, ["MUNICÍPIO"]),
+      estado_sede:   extrairCampo(bruto, ["UF"])
+    };
+    if(dados.cnpj) dados.cnpj = formatarCnpj(dados.cnpj);
+    if(dados.estado_sede) dados.estado_sede = dados.estado_sede.toUpperCase().slice(0,2);
+
+    var achados = 0;
+    Object.keys(dados).forEach(function(f){
+      if(dados[f]){ el(f).value = dados[f]; achados++; }
+    });
+    el("complemento_sede").value = ""; // complemento é opcional: fica em branco
+    render();
+
+    if(achados === 0){
+      msg.textContent = "Não reconheci os dados. Confira se o texto é o comprovante do CNPJ.";
+      msg.className = "cnpj-msg warn";
+    } else {
+      var faltando = OBRIGATORIOS.filter(function(f){ return !el(f).value.trim(); });
+      msg.textContent = faltando.length
+        ? "Campos preenchidos! Complete os campos em laranja (ex.: Número DN e Telefone)."
+        : "Todos os campos preenchidos!";
+      msg.className = faltando.length ? "cnpj-msg warn" : "cnpj-msg ok";
+    }
+  }
+
+  el("btn-colar").addEventListener("click", function(){
+    var msg = el("cnpj-msg");
+    if(navigator.clipboard && navigator.clipboard.readText){
+      navigator.clipboard.readText().then(function(txt){
+        el("cnpj_dados").value = txt;
+        preencherDoCnpj();
+      }).catch(function(){
+        msg.textContent = "O navegador bloqueou a leitura. Cole na caixa acima com Ctrl+V.";
+        msg.className = "cnpj-msg warn";
+        el("cnpj_dados").focus();
+      });
+    } else {
+      msg.textContent = "Cole na caixa acima com Ctrl+V.";
+      msg.className = "cnpj-msg warn";
+      el("cnpj_dados").focus();
+    }
+  });
+  el("btn-preencher").addEventListener("click", preencherDoCnpj);
+  el("cnpj_dados").addEventListener("paste", function(){ setTimeout(preencherDoCnpj, 0); });
+
   FIELDS.forEach(function(f){
     var input = el(f);
     input.addEventListener("input", function(){
@@ -345,6 +459,8 @@
   el("btn-limpar").addEventListener("click", function(){
     if(!confirm("Limpar todos os campos?")) return;
     FIELDS.forEach(function(f){ el(f).value = ""; });
+    el("cnpj_dados").value = "";
+    el("cnpj-msg").textContent = "";
     render();
   });
 
